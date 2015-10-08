@@ -1,6 +1,7 @@
 package casak.ru.parallaxed;
 
-import      android.app.Activity;
+import android.support.v4.app.FragmentActivity;
+import android.app.Fragment;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -9,7 +10,10 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,40 +32,42 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 
-public class ParallaxActivity extends Activity{
+public class ParallaxActivity extends FragmentActivity{
 
     private static final String TAG = "PARALLAX_ACTIVITY";
-    private ImageView imageView;
+
+    private ListView list;
+    private LazyAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+
         setContentView(R.layout.activity_parallax);
 
-        imageView = (ImageView) this.findViewById(R.id.image);
-        if(contentText==null)
-           new ProgressTask().execute();
+        new ProgressTask().execute("http://casak.ru/api.json");
     }
 
 
-
-    String contentText = null;
-    class ProgressTask extends AsyncTask <Bitmap, Void, Bitmap> {
+    class ProgressTask extends AsyncTask <String, Void, Frame[]> {
+        private StringBuilder content = null;
+        private BufferedReader reader = null;
+        private String imageURL = null;
+        private Bitmap myBitmap = null;
+        private URL url = null;
+        private HttpURLConnection connection = null;
+        private Frame[] frames = null;
 
         @Override
-        protected Bitmap doInBackground(Bitmap... path) {
-
-            StringBuilder content = null;
-            BufferedReader reader = null;
-            String imageURL = null;
-            Bitmap myBitmap = null;
+        protected Frame[] doInBackground(String... path) {
             try {
-                URL url = new URL("http://ellotv.bigdig.com.ua/api/home/video");
-                HttpURLConnection c = (HttpURLConnection) url.openConnection();
-                c.setRequestMethod("GET");
-                c.setReadTimeout(10000);
-                c.connect();
-                reader = new BufferedReader(new InputStreamReader(c.getInputStream()));
+                url = new URL(path[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setReadTimeout(10000);
+                connection.connect();
+                reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 content = new StringBuilder();
                 String line = null;
                 while ((line = reader.readLine()) != null) {
@@ -73,24 +79,25 @@ public class ParallaxActivity extends Activity{
                     JSONObject data = dataJsonObj.getJSONObject("data");
                     JSONArray items = data.getJSONArray("items");
 
-                    JSONObject secondFriend = items.getJSONObject(0);
-                    imageURL = secondFriend.getString("picture");
-                    Log.d(TAG, "Picture URL : " + imageURL);
+                    frames = new Frame[items.length()];
+                    for (int i = 0; i < items.length(); i++) {
+                        JSONObject item = items.getJSONObject(i);
+
+                        StringBuilder artistName = new StringBuilder();
+                        JSONArray artists = item.getJSONArray("artists");
+                        for (int j = 0; j < artists.length(); j++) {
+                            JSONObject artist = artists.getJSONObject(j);
+                            if (artists.length() == 1) artistName.append(artist.getString("name"));
+                            else artistName.append(artist.getString("name") + ", ");
+                        }
+
+                        frames[i] = new Frame(getImage(item.getString("picture")),
+                                item.getString("title"), artistName.toString(),
+                                item.getInt("view_count"));
+                    }
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
-
-                try {
-                    url = new URL(imageURL);
-                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                    connection.setDoInput(true);
-                    connection.connect();
-                    InputStream input = connection.getInputStream();
-                    myBitmap = BitmapFactory.decodeStream(input);
-                } catch (IOException e) {
-                    Log.d(TAG, "IOException on creating bitmap");
-                }
-
             }
             catch (IOException ex) {
                 content.append(ex.getMessage());
@@ -105,17 +112,41 @@ public class ParallaxActivity extends Activity{
                     }
                 }
             }
-            return myBitmap;
+            return frames;
         }
+
         @Override
         protected void onProgressUpdate(Void... items) {
         }
+
         @Override
-        protected void onPostExecute(Bitmap image) {
-            imageView.setImageBitmap(image);
+        protected void onPostExecute(Frame... frames) {
+            for(int i=0; i<frames.length; i++) Log.d(TAG, frames[i].toString());
+
+
+            ParallaxListView parallaxListView = (ParallaxListView) findViewById(R.id.parallaxListView);
+            parallaxListView.setDividerHeight(2);
+            parallaxListView.setAdapter(new LazyAdapter(getApplicationContext(), frames));
+
+            /*list = (ListView)findViewById(R.id.list);
+
+            adapter = new LazyAdapter(getApplicationContext(), frames);
+            list.setAdapter(adapter);*/
         }
 
 
-}
-
+        private Bitmap getImage(String imageURL){
+            try {
+                URL url = new URL(imageURL);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setDoInput(true);
+                connection.connect();
+                InputStream input = connection.getInputStream();
+                return myBitmap = BitmapFactory.decodeStream(input);
+            } catch (IOException e) {
+                Log.d(TAG, "IOException on creating bitmap");
+                return null;
+            }
+        }
+    }
 }
