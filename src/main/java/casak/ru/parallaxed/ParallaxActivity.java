@@ -1,63 +1,58 @@
 package casak.ru.parallaxed;
 
-import android.support.v4.app.FragmentActivity;
-import android.app.Fragment;
+import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.ImageView;
+import android.view.View;
 import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URI;
 import java.net.URL;
 
-public class ParallaxActivity extends FragmentActivity{
+public class ParallaxActivity extends Activity{
 
     private static final String TAG = "PARALLAX_ACTIVITY";
-
-    private ListView list;
-    private LazyAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_FULLSCREEN);
 
         setContentView(R.layout.activity_parallax);
 
         new ProgressTask().execute("http://casak.ru/api.json");
     }
 
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);}
+    }
+
 
     class ProgressTask extends AsyncTask <String, Void, Frame[]> {
-        private StringBuilder content = null;
-        private BufferedReader reader = null;
-        private String imageURL = null;
-        private Bitmap myBitmap = null;
-        private URL url = null;
-        private HttpURLConnection connection = null;
-        private Frame[] frames = null;
+        private StringBuilder content;
+        private BufferedReader reader;
+        private URL url;
+        private HttpURLConnection connection;
+        private Frame[] frames;
 
         @Override
         protected Frame[] doInBackground(String... path) {
@@ -69,7 +64,7 @@ public class ParallaxActivity extends FragmentActivity{
                 connection.connect();
                 reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 content = new StringBuilder();
-                String line = null;
+                String line;
                 while ((line = reader.readLine()) != null) {
                     content.append(line + "\n");
                 }
@@ -108,7 +103,7 @@ public class ParallaxActivity extends FragmentActivity{
                         reader.close();
                     }
                     catch (IOException e) {
-                        Log.d(TAG, "IOEXception on closing");
+                        Log.d(TAG, "IOEXception on reader.close()");
                     }
                 }
             }
@@ -121,17 +116,9 @@ public class ParallaxActivity extends FragmentActivity{
 
         @Override
         protected void onPostExecute(Frame... frames) {
-            for(int i=0; i<frames.length; i++) Log.d(TAG, frames[i].toString());
-
-
             ParallaxListView parallaxListView = (ParallaxListView) findViewById(R.id.parallaxListView);
             parallaxListView.setDividerHeight(2);
             parallaxListView.setAdapter(new LazyAdapter(getApplicationContext(), frames));
-
-            /*list = (ListView)findViewById(R.id.list);
-
-            adapter = new LazyAdapter(getApplicationContext(), frames);
-            list.setAdapter(adapter);*/
         }
 
 
@@ -142,7 +129,7 @@ public class ParallaxActivity extends FragmentActivity{
                 connection.setDoInput(true);
                 connection.connect();
                 InputStream input = connection.getInputStream();
-                return myBitmap = BitmapFactory.decodeStream(input);
+                return BitmapFactory.decodeStream(input);
             } catch (IOException e) {
                 Log.d(TAG, "IOException on creating bitmap");
                 return null;

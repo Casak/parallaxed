@@ -9,7 +9,7 @@ import android.widget.ImageView;
 
 public class ParallaxImageView extends ImageView {
 
-    private final float DEFAULT_PARALLAX_RATIO = 1.5f;
+    private final float DEFAULT_PARALLAX_RATIO = 2f;
     private float parallaxRatio = DEFAULT_PARALLAX_RATIO;
     private boolean needToTranslate = true;
     private ParallaxImageListener listener;
@@ -20,7 +20,7 @@ public class ParallaxImageView extends ImageView {
     private int recyclerViewYPos = -1;
 
     public interface ParallaxImageListener {
-        public int[] requireValuesForTranslate();
+        int[] requireValuesForTranslate();
     }
 
     public ParallaxImageView(Context context) {
@@ -48,13 +48,6 @@ public class ParallaxImageView extends ImageView {
         }
     }
 
-    /**
-     * This trick was needed because there is no way to detect when image is displayed,
-     * we need to translate image for very first time as well. This will be needed only
-     * if you are using async image loading...
-     *
-     * # If only there was another way to get notified when image has displayed.
-     */
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
@@ -63,9 +56,6 @@ public class ParallaxImageView extends ImageView {
             needToTranslate = !doTranslate();
     }
 
-    /**
-     * Notify this view when it is back on recyclerView, so we can reset.
-     */
     public void reuse() {
         needToTranslate = true;
     }
@@ -83,10 +73,6 @@ public class ParallaxImageView extends ImageView {
         }
 
         return true;
-    }
-
-    public void setParallaxRatio(float parallaxRatio) {
-        this.parallaxRatio = parallaxRatio;
     }
 
     public ParallaxImageListener getListener() {
