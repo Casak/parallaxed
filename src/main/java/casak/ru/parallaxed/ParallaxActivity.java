@@ -30,7 +30,7 @@ public class ParallaxActivity extends Activity{
 
         setContentView(R.layout.activity_parallax);
 
-        new ProgressTask().execute("http://casak.ru/api.json");
+        new ProgressTask().execute("http://ellotv.bigdig.com.ua/api/home/video");
     }
 
     @Override
