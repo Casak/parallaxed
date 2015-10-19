@@ -21,3 +21,6 @@ _https://www.youtube.com/watch?v=ersAT1fua9U_
 
 
 Также на изображении должна быть тень в нижней части, чтобы на светлых фотографиях был виден текст.
+
+
+![](http://casak.ru/parallax.gif)
